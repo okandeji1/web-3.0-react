@@ -11,7 +11,11 @@ const { ethereum } = window;
 const getEthereumContract = () => {
   const provider = new ethers.providers.Web3Provider(ethereum);
   const signer = provider.getSigner();
-  const transactionContract = new ethers.Contract(contractAddress, contractABI, signer);
+  const transactionContract = new ethers.Contract(
+    contractAddress,
+    contractABI,
+    signer
+  );
   return transactionContract;
 };
 
@@ -39,19 +43,23 @@ export const TransactionProvider = ({ children }) => {
       if (!ethereum) return alert("Please install metamask!");
 
       const transactionContract = getEthereumContract();
-      const availableTransactions = await transactionContract.getAllTransactions();
-      const structuredTransactions = availableTransactions.map((transaction) => ({
-        addressTo: transaction.receiver,
-        addressFrom: transaction.sender,
-        timestamp: new Date(transaction.timestamp.toNumber() * 1000).toLocaleString(),
-        message: transaction.message,
-        keyword: transaction.keyword,
-        amount: parseInt(transaction.amount._hex) / (10 ** 18) // All values returned in hexadecimal GWEI which is the sub unit of ethereum. So we have to multiply large to get ethereum value
-      }))
+      const availableTransactions =
+        await transactionContract.getAllTransactions();
+      const structuredTransactions = availableTransactions.map(
+        (transaction) => ({
+          addressTo: transaction.receiver,
+          addressFrom: transaction.sender,
+          timestamp: new Date(
+            transaction.timestamp.toNumber() * 1000
+          ).toLocaleString(),
+          message: transaction.message,
+          keyword: transaction.keyword,
+          amount: parseInt(transaction.amount._hex) / 10 ** 18, // All values returned in hexadecimal GWEI which is the sub unit of ethereum. So we have to multiply large to get ethereum value
+        })
+      );
       setTransactions(structuredTransactions);
-    } catch (error) {
-    }
-  }
+    } catch (error) {}
+  };
 
   const checkIfWalletIsConnected = async () => {
     try {
@@ -62,20 +70,16 @@ export const TransactionProvider = ({ children }) => {
         setCurrentAccount(accounts[0]);
         getTransactions();
       }
-    } catch (error) {
-      throw new Error("No ethereum object check wallet!");
-    }
+    } catch (error) {}
   };
 
   const checkIfTransactionsExist = async () => {
     try {
       const transactionContract = getEthereumContract();
       const transactionCount = await transactionContract.getTransactionCount();
-      window.localStorage.setItem('transactionCount', transactionCount)
-    } catch (error) {
-      throw new Error("No ethereum object!");
-    }
-  }
+      window.localStorage.setItem("transactionCount", transactionCount);
+    } catch (error) {}
+  };
 
   const connectWallet = async () => {
     try {
@@ -85,15 +89,14 @@ export const TransactionProvider = ({ children }) => {
         method: "eth_requestAccounts",
       });
       setCurrentAccount(accounts[0]);
-    } catch (error) {
-      throw new Error("No ethereum object connected!");
-    }
+    } catch (error) {}
   };
 
   const sendTransaction = async () => {
     try {
       if (!ethereum) return alert("Please install metamask!");
       // Get the data from the from
+      setIsLoading(true);
       const { addressTo, amount, keyword, message } = formData;
       const transactionContract = getEthereumContract();
       const parsedAmount = ethers.utils.parseEther(amount);
@@ -117,16 +120,19 @@ export const TransactionProvider = ({ children }) => {
         keyword
       );
 
-      setIsLoading(true);
-      if(transactionHash) setIsLoading(false);
-
+      await transactionHash;
+      
       const transactionCount = await transactionContract.getTransactionCount();
       setTransactionCount(transactionCount.toNumber());
+      setFromData({
+        addressTo: "",
+        amount: "",
+        keyword: "",
+        message: "",
+      })
+      setIsLoading(false);
       getTransactions();
-      // window.reload();
-    } catch (error) {
-      throw new Error("No ethereum object!");
-    }
+    } catch (error) {}
   };
 
   useEffect(() => {
@@ -143,7 +149,7 @@ export const TransactionProvider = ({ children }) => {
         sendTransaction,
         handleChange,
         transactions,
-        isLoading
+        isLoading,
       }}>
       {children}
     </TransactionContext.Provider>
